@@ -88,7 +88,7 @@ def cleanupSharedMemory(shared_memory):
 class MARLSystemMapper:
     def __init__(self):
         self.max_cores = psutil.cpu_count(logical=False)  # Number of cores
-        self.max_cpu_processes = 4 # Number of CPU processes
+        self.max_cpu_processes = psutil.cpu_count(logical=False) # Number of CPU processes
         self.max_gpu_processes = torch.cuda.device_count()  # Number of accelerators
 
 
@@ -103,7 +103,7 @@ class MARLSystemMapper:
 
     def compute_configurations(self):
         """
-        Compute the design space: combinations of acclerator learners, CPU learners, and cores per CPU learner.
+        Compute the design space: combinations of accelerator learners, CPU learners, and cores per CPU learner.
 
         Parameters: None
         Returns: 
@@ -116,7 +116,7 @@ class MARLSystemMapper:
                     max_cores_per_learner = self.max_cores // c
                     total_configurations += max_cores_per_learner
             else:
-                total_configurations += 1
+                total_configurations += self.max_cores
                 for c in range(1, self.max_cpu_processes + 1):
                     max_cores_per_learner = self.max_cores // c
                     total_configurations += max_cores_per_learner
@@ -144,8 +144,6 @@ class MARLSystemMapper:
             if num_cpu_learners > 0:
                 min_cores_per_learner = 1
                 max_cores_per_learner = psutil.cpu_count(logical=False) // num_cpu_learners
-                # if Config.batch_size > 5000:
-                #     min_cores_per_learner = max_cores_per_learner
                 cores_per_cpu_learner = trial.suggest_int(
                     "cores_per_cpu_learner", min_cores_per_learner, max_cores_per_learner
                 )

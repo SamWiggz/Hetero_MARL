@@ -5,7 +5,7 @@
 ## Overview
 
 ## 1. Environment Setup
-Preliminary: Have [conda](https://www.anaconda.com/download/success) installed
+Preliminary: Have [conda](https://www.anaconda.com/download/success) installed <br />
 Note: May need to download [torch](https://pytorch.org/get-started/locally/) manually
 
 1. Clone this repository:
@@ -19,6 +19,10 @@ conda env create --file=environment.yml
 3. Activate conda environment:
 ```
 conda activate smart
+```
+4. Install environment simulation dependencies:
+```
+pip install -e .
 ```
 
 ## 2. Running an Example
