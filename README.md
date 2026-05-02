@@ -1,4 +1,4 @@
-# Hetero_MARL: Multi-Agent Reinforcement Learning on Heterogeneous Platforms
+# Accelerating Multi-Agent Reinforcement Learning on Heterogeneous Platforms
 
 ## Overview
 
