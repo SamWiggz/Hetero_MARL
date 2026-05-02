@@ -26,8 +26,8 @@ class Runtime_Load_Balancer:
                 (cpu_batch_size % self.num_cpu if self.rank == self.num_cpu - 1 else 0)
         else:
             return (self.batch_size - cpu_batch_size) // self.num_gpu+ \
-                ((self.batch_size - cpu_batch_size) % self.num_gpu if self.rank == self.world_size - 1 else 0)   
-    
+                ((self.batch_size - cpu_batch_size) % self.num_gpu if self.rank == self.world_size - 1 else 0)
+
     def update(self, total, all_reduce):
         if self.num_cpu != 0 and self.num_gpu != 0:
             profile_time = total

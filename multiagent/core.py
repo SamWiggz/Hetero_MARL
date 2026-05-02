@@ -46,7 +46,7 @@ class Entity(object):
     def __init__(self):
         # index among all entities (important to set for distance caching)
         self.i = 0
-        # name 
+        # name
         self.name = ''
         # properties:
         self.size = 0.050
@@ -182,7 +182,7 @@ class World(object):
 
     # update state of the world
     def step(self):
-        # set actions for scripted agents 
+        # set actions for scripted agents
         for agent in self.scripted_agents:
             agent.action = agent.action_callback(agent, self)
         # gather forces applied to entities
@@ -219,7 +219,7 @@ class World(object):
                 [f_a, f_b] = self.get_entity_collision_force(a, b)
                 if(f_a is not None):
                     if(p_force[a] is None): p_force[a] = 0.0
-                    p_force[a] = f_a + p_force[a] 
+                    p_force[a] = f_a + p_force[a]
                 if(f_b is not None):
                     if(p_force[b] is None): p_force[b] = 0.0
                     p_force[b] = f_b + p_force[b]
@@ -252,7 +252,7 @@ class World(object):
             agent.state.c = np.zeros(self.dim_c)
         else:
             noise = np.random.randn(*agent.action.c.shape) * agent.c_noise if agent.c_noise else 0.0
-            agent.state.c = agent.action.c + noise      
+            agent.state.c = agent.action.c + noise
 
     # get collision forces for any contact between two entities
     def get_entity_collision_force(self, ia, ib):

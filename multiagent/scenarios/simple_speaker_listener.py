@@ -1,16 +1,23 @@
 import numpy as np
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
+from multiagent.scenarios.config import indexed_color, positive_int
 np.random.seed(1)
 
 class Scenario(BaseScenario):
-    def make_world(self):
+    def make_world(self, num_agents=2, num_landmarks=3):
+        num_agents = positive_int("num_agents", num_agents)
+        if num_agents != 2:
+            raise ValueError(
+                "simple_speaker_listener is fixed at two agents. "
+                "Use multi_speaker_listener for configurable speaker/listener counts."
+            )
+        num_landmarks = positive_int("num_landmarks", num_landmarks)
         world = World()
         # set any world properties first
         world.dim_c = 3
-        num_landmarks = 3
         # add agents
-        world.agents = [Agent() for i in range(2)]
+        world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
             agent.name = 'agent %d' % i
             agent.collide = False
@@ -40,11 +47,10 @@ class Scenario(BaseScenario):
         world.agents[0].goal_b = np.random.choice(world.landmarks)
         # random properties for agents
         for i, agent in enumerate(world.agents):
-            agent.color = np.array([0.25,0.25,0.25])               
+            agent.color = np.array([0.25,0.25,0.25])
         # random properties for landmarks
-        world.landmarks[0].color = np.array([0.65,0.15,0.15])
-        world.landmarks[1].color = np.array([0.15,0.65,0.15])
-        world.landmarks[2].color = np.array([0.15,0.15,0.65])
+        for i, landmark in enumerate(world.landmarks):
+            landmark.color = indexed_color(i, len(world.landmarks))
         # special colors for goals
         world.agents[0].goal_a.color = world.agents[0].goal_b.color + np.array([0.45, 0.45, 0.45])
         # set random initial states
@@ -82,7 +88,7 @@ class Scenario(BaseScenario):
         for other in world.agents:
             if other is agent or (other.state.c is None): continue
             comm.append(other.state.c)
-        
+
         # speaker
         if not agent.movable:
             #print("Speaker: ", [goal_color])
@@ -95,4 +101,4 @@ class Scenario(BaseScenario):
             ret = np.concatenate([agent.state.p_vel] + entity_pos + comm)
             #print("Listener: ", ret)
             return ret
-            
+

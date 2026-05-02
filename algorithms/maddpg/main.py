@@ -13,7 +13,7 @@ from maddpg import MADDPG
 import Config
 import math
 
-from utils import make_parallel_env, is_cpu_process, gpu_mapping, get_device
+from utils import make_parallel_env, is_cpu_process, gpu_mapping, get_device, get_env_config
 
 sys.path.append('../')
 from make_env import make_env
@@ -24,9 +24,9 @@ import torch.multiprocessing as mp
 import torch.distributed as dist
 
 from balancer import Runtime_Load_Balancer
-from smart import initSharedMemory, cleanupSharedMemory, MARLSystemMapper
+from hetero_marl import initSharedMemory, cleanupSharedMemory, HeteroMARLRunner
 
-def MARL_train(rank, world_size, shared_memory_params, n_episodes, current_config, param_queue, tuner = False):
+def MARL_train(rank, world_size, shared_memory_params, n_episodes, current_config):
 
     num_gpu_processes, num_cpu_processes, cores_per_cpu_process = current_config
     if num_cpu_processes == 0:
@@ -50,28 +50,28 @@ def MARL_train(rank, world_size, shared_memory_params, n_episodes, current_confi
     elif rank != 0:
         torch.set_num_threads(1)
     else: # if GPU thread is the actor thread
-        torch.set_num_threads(1) 
+        torch.set_num_threads(1)
 
     # only rank 0 does data collection
     env = make_parallel_env(Config.env_id, Config.n_rollout_threads, Config.seed,
-                            Config.discrete_action)
+                            Config.discrete_action, get_env_config(Config))
 
     maddpg = MADDPG.init_from_env(env, agent_alg=Config.agent_alg,
                                   adversary_alg=Config.adversary_alg,
                                   tau=Config.tau,
                                   lr=Config.lr,
                                   rank=rank,
-                                  hidden_dim=Config.hidden_sizes, 
+                                  hidden_dim=Config.hidden_sizes,
                                   device = get_device(rank, num_cpu_processes),
                                   world_size = world_size)
-    
+
     replay_buffer = ReplayBuffer(Config.buffer_length, len(env.agent_types),
                                  [obsp.shape[0] for obsp in env.observation_space],
                                  [acsp.shape[0] if isinstance(acsp, Box) else acsp.n
                                   for acsp in env.action_space],
-                                  shared_memory_params['obs_shm'], shared_memory_params['ac_shm'], shared_memory_params['rew_shm'], 
+                                  shared_memory_params['obs_shm'], shared_memory_params['ac_shm'], shared_memory_params['rew_shm'],
                                   shared_memory_params['next_obs_shm'], shared_memory_params['done_shm'], shared_memory_params['curr_i'], shared_memory_params['filled_i'])
-                                  
+
     if rank != 0:
         env.close()
 
@@ -86,12 +86,14 @@ def MARL_train(rank, world_size, shared_memory_params, n_episodes, current_confi
     mu_count = 0
     balancer_time = 0
     profile = 0
+    timing_log_interval_updates = max(0, int(getattr(Config, 'timing_log_interval_updates', 10)))
+    next_timing_log_update = timing_log_interval_updates
     current_episode = t[0] // Config.episode_length
     for ep_i in range(current_episode, current_episode + n_episodes, Config.n_rollout_threads):
         if rank == 0:
             ep[0] = ep_i + Config.n_rollout_threads
             print("Episodes %i-%i of %i" % (ep_i + 1,
-                                    ep_i + 1 + Config.n_rollout_threads,
+                                    min(ep_i + Config.n_rollout_threads, Config.n_episodes),
                                     Config.n_episodes))
             obs = env.reset()
             # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
@@ -108,7 +110,6 @@ def MARL_train(rank, world_size, shared_memory_params, n_episodes, current_confi
             dc_clock = time.perf_counter()
             if rank == 0:
                 # rearrange observations to be per agent, and convert to torch Variable
-                #obs = np.array(obs, dtype=np.float32) #for simple_spread
                 torch_obs = [torch.stack([torch.tensor(arr[i], dtype=torch.float32) for arr in obs]) for i in range(maddpg.num_agents)]
                 # get actions as torch Variables
                 with torch.no_grad():
@@ -129,17 +130,17 @@ def MARL_train(rank, world_size, shared_memory_params, n_episodes, current_confi
 
             ###
             # Model Update
-            ###  
+            ###
             if (len(replay_buffer) >= Config.batch_size and
                 (t[0] % Config.steps_per_update) < Config.n_rollout_threads):
                     dc_count += 1
                     dist.barrier()
-                    mu_start = time.perf_counter() 
+                    mu_start = time.perf_counter()
                     maddpg.prep_training(device=get_device(rank, num_cpu_processes))
                     for u_i in range(Config.n_updates):
                         for a_i in range(maddpg.num_agents):
                             sample = replay_buffer.sample(balancer.get_subbatch_size(),
-                                                    device=get_device(rank, num_cpu_processes))          
+                                                    device=get_device(rank, num_cpu_processes))
                             profile += maddpg.update(sample, a_i, device=get_device(rank, num_cpu_processes))
                         maddpg.update_all_targets()
                     dist.barrier()
@@ -151,37 +152,27 @@ def MARL_train(rank, world_size, shared_memory_params, n_episodes, current_confi
                     profile = 0
 
                     if rank == 0:
-                        if dc_count != 0 and t[0] % 512 == 0:
-                            print("Avg Data Collection Time: ", dc_tot/dc_count,"s")
-                            print("Avg Model Update Time: ", mu_tot/mu_count,"s")
-                            print("Last Model Update Time: ", mu_last,"s")
+                        if next_timing_log_update and mu_count >= next_timing_log_update:
+                            print(
+                                "Avg Data Collection Time: {:.4f}s | "
+                                "Avg Model Update Time: {:.4f}s".format(
+                                    dc_tot / dc_count if dc_count else 0.0,
+                                    mu_tot / mu_count if mu_count else 0.0,
+                                )
+                            )
+                            next_timing_log_update += timing_log_interval_updates
                         maddpg.prep_rollouts()
-
-            if tuner:
-                if (mu_count == 2 and num_cpu_processes > 0 and num_gpu_processes == 0) or \
-                (mu_count == 2 and num_cpu_processes == 0 and num_gpu_processes > 0) or \
-                (mu_count == 3 and num_cpu_processes > 0 and num_gpu_processes > 0):
-                    print(balancer.cpu_gpu_ratio)
-                    break
-
 
     if rank == 0:
         env.close()
-        print("Total Train Time: ", (time.perf_counter()-train_start),"s")
-        print("Avg Data Collection Time: ", dc_tot/dc_count,"s")
-        print("Avg Model Update Time: ", mu_tot/mu_count,"s")
-        print("Last Model Update Time: ", mu_last,"s")
-        print("Avg Load Balancer Time: ", balancer_time,"s")
+        print(f"Total Train Time: {time.perf_counter() - train_start:.4f}s")
+        print(f"Avg Data Collection Time: {(dc_tot / dc_count if dc_count else 0.0):.4f}s")
+        print(f"Avg Model Update Time: {(mu_tot / mu_count if mu_count else 0.0):.4f}s")
+        print("Config: ", current_config)
+        print("Environment: ", Config.env_id)
+        print("Agents: ", maddpg.num_agents)
+        print("Batch Size: ", Config.batch_size)
 
-        print("CPU Processes: ", num_cpu_processes)
-        print("GPU Processes: ", num_gpu_processes)
-        print("Core per CPU Process: ", cores_per_cpu_process)
-        print("Hidden Dimension ", Config.hidden_sizes[0])
-        print("Batch size ", Config.batch_size)
-        print("Agents ", maddpg.num_agents)
-
-    if rank == 0:
-        param_queue.put(dc_tot/dc_count + mu_last+ balancer_time/mu_count)
     dist.barrier()
     dist.destroy_process_group()
 
@@ -191,10 +182,10 @@ if __name__ == '__main__':
     os.environ['MASTER_PORT'] = Config.port
 
     ### Create Shared Memory ###
-    shared_memory_params = initSharedMemory() 
+    shared_memory_params = initSharedMemory()
 
-    mapper = MARLSystemMapper()
-    mapper.launch(MARL_train, shared_memory_params)
+    runner = HeteroMARLRunner()
+    runner.launch(MARL_train, shared_memory_params)
 
     ### Cleanup Shared Memory ###
     cleanupSharedMemory(shared_memory_params)

@@ -73,9 +73,9 @@ class AttentionAgent(object):
                                             num_out_pol,
                                             hidden_dim=hidden_dim,
                                             onehot_dim=onehot_dim).to(device)
-        
+
         hard_update(self.target_policy, self.policy)
-        
+
         if rank == 0:
             self.policy_inf = DiscretePolicy(num_in_pol, num_out_pol,
                                      hidden_dim=hidden_dim,

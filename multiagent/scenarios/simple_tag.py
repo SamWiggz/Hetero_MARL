@@ -1,17 +1,18 @@
 import numpy as np
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
+from multiagent.scenarios.config import nonnegative_int, positive_int
 
 
 class Scenario(BaseScenario):
-    def make_world(self):
+    def make_world(self, num_good_agents=1, num_adversaries=3, num_landmarks=2):
+        num_good_agents = positive_int("num_good_agents", num_good_agents)
+        num_adversaries = nonnegative_int("num_adversaries", num_adversaries)
+        num_landmarks = positive_int("num_landmarks", num_landmarks)
         world = World()
         # set any world properties first
         world.dim_c = 2
-        num_good_agents = 1
-        num_adversaries = 3
         num_agents = num_adversaries + num_good_agents
-        num_landmarks = 2
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):

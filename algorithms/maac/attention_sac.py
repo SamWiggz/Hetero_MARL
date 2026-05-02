@@ -68,7 +68,7 @@ class AttentionSAC(object):
                  reward_scale=10.,
                  pol_hidden_dim=128,
                  critic_hidden_dim=128, attend_heads=4,
-                 rank=0, device = 'cpu', world_size = 1, 
+                 rank=0, device = 'cpu', world_size = 1,
                  **kwargs):
         """
         Inputs:
@@ -104,8 +104,8 @@ class AttentionSAC(object):
 
             self.critic_timer = AllReduceTimer(rank)
             self.critic.register_comm_hook(state=None, hook=self.critic_timer.hook)
-            
-        
+
+
         self.critic_optimizer = Adam(self.critic.parameters(), lr=q_lr,
                                      weight_decay=1e-3)
         self.agent_init_params = agent_init_params

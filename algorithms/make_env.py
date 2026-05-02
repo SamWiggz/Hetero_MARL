@@ -12,7 +12,17 @@ of size (env.world.dim_p + env.world.dim_c, 1). Physical actions precede
 communication actions in this array. See environment.py for more details.
 """
 
-def make_env(scenario_name, benchmark=False, discrete_action=False):
+import os
+import sys
+
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT in sys.path:
+    sys.path.remove(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
+
+
+def make_env(scenario_name, benchmark=False, discrete_action=False, env_config=None):
     '''
     Creates a MultiAgentEnv object as env. This can be used similar to a gym
     environment by calling env.reset() and env.step().
@@ -35,9 +45,16 @@ def make_env(scenario_name, benchmark=False, discrete_action=False):
     # load scenario from script
     scenario = scenarios.load(scenario_name + ".py").Scenario()
     # create world
-    world = scenario.make_world()
+    env_config = env_config or {}
+    try:
+        world = scenario.make_world(**env_config)
+    except TypeError as exc:
+        raise TypeError(
+            "Invalid env_config for scenario '{}': {}. Original error: {}".format(
+                scenario_name, env_config, exc)
+        ) from exc
     # create multiagent environment
-    if benchmark:        
+    if benchmark:
         env = MultiAgentEnv(world, scenario.reset_world, scenario.reward,
                             scenario.observation, scenario.benchmark_data,
                             discrete_action=discrete_action)

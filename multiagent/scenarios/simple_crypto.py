@@ -8,6 +8,7 @@ adversary to goal. Adversary is rewarded for its distance to the goal.
 import numpy as np
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
+from multiagent.scenarios.config import positive_int
 import random
 
 
@@ -18,20 +19,23 @@ class CryptoAgent(Agent):
 
 class Scenario(BaseScenario):
 
-    def make_world(self):
+    def make_world(self, num_adversaries=1, num_good_listeners=1,
+                   num_speakers=1, num_landmarks=2):
+        num_adversaries = positive_int("num_adversaries", num_adversaries)
+        num_good_listeners = positive_int("num_good_listeners", num_good_listeners)
+        num_speakers = positive_int("num_speakers", num_speakers)
+        num_landmarks = positive_int("num_landmarks", num_landmarks)
         world = World()
         # set any world properties first
-        num_agents = 3
-        num_adversaries = 1
-        num_landmarks = 2
-        world.dim_c = 4
+        num_agents = num_adversaries + num_good_listeners + num_speakers
+        world.dim_c = max(4, num_landmarks)
         # add agents
         world.agents = [CryptoAgent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
             agent.name = 'agent %d' % i
             agent.collide = False
             agent.adversary = True if i < num_adversaries else False
-            agent.speaker = True if i == 2 else False
+            agent.speaker = True if i >= num_adversaries + num_good_listeners else False
             agent.movable = False
         # add landmarks
         world.landmarks = [Landmark() for i in range(num_landmarks)]
@@ -59,8 +63,10 @@ class Scenario(BaseScenario):
             landmark.color = color
         # set goal landmark
         goal = np.random.choice(world.landmarks)
-        world.agents[1].color = goal.color
-        world.agents[2].key = np.random.choice(world.landmarks).color
+        for agent in self.good_listeners(world):
+            agent.color = goal.color
+        for agent in self.speakers(world):
+            agent.key = np.random.choice(world.landmarks).color
 
         for agent in world.agents:
             agent.goal_a = goal
@@ -82,6 +88,9 @@ class Scenario(BaseScenario):
     # return all agents that are not adversaries
     def good_listeners(self, world):
         return [agent for agent in world.agents if not agent.adversary and not agent.speaker]
+
+    def speakers(self, world):
+        return [agent for agent in world.agents if agent.speaker]
 
     # return all agents that are not adversaries
     def good_agents(self, world):
@@ -141,16 +150,19 @@ class Scenario(BaseScenario):
 
         confer = np.array([0])
 
-        if world.agents[2].key is None:
+        speakers = self.speakers(world)
+        speaker_keys = [
+            speaker.key if speaker.key is not None else np.zeros(world.dim_c)
+            for speaker in speakers
+        ]
+        if any(speaker.key is None for speaker in speakers):
             confer = np.array([1])
-            key = np.zeros(world.dim_c)
             goal_color = np.zeros(world.dim_c)
-        else:
-            key = world.agents[2].key
 
         prnt = False
         # speaker
         if agent.speaker:
+            key = agent.key if agent.key is not None else np.zeros(world.dim_c)
             if prnt:
                 print('speaker')
                 print(agent.state.c)
@@ -161,8 +173,8 @@ class Scenario(BaseScenario):
             if prnt:
                 print('listener')
                 print(agent.state.c)
-                print(np.concatenate([key] + comm + [confer]))
-            return np.concatenate([key] + comm)
+                print(np.concatenate(speaker_keys + comm + [confer]))
+            return np.concatenate(speaker_keys + comm)
         if not agent.speaker and agent.adversary:
             if prnt:
                 print('adversary')

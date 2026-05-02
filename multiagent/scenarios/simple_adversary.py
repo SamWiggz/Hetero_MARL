@@ -1,19 +1,25 @@
 import numpy as np
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
+from multiagent.scenarios.config import nonnegative_int, positive_int
 import random
 
 
 class Scenario(BaseScenario):
 
-    def make_world(self):
+    def make_world(self, num_agents=8, num_adversaries=1, num_landmarks=None):
+        num_agents = positive_int("num_agents", num_agents)
+        num_adversaries = nonnegative_int("num_adversaries", num_adversaries)
+        if num_adversaries >= num_agents:
+            raise ValueError("simple_adversary needs at least one non-adversary agent.")
+        num_landmarks = (
+            num_agents - num_adversaries if num_landmarks is None
+            else positive_int("num_landmarks", num_landmarks)
+        )
         world = World()
         # set any world properties first
         world.dim_c = 2
-        num_agents = 8
         world.num_agents = num_agents
-        num_adversaries = 1
-        num_landmarks = num_agents - 1
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
@@ -35,9 +41,8 @@ class Scenario(BaseScenario):
 
     def reset_world(self, world):
         # random properties for agents
-        world.agents[0].color = np.array([0.85, 0.35, 0.35])
-        for i in range(1, world.num_agents):
-            world.agents[i].color = np.array([0.35, 0.35, 0.85])
+        for agent in world.agents:
+            agent.color = np.array([0.85, 0.35, 0.35]) if agent.adversary else np.array([0.35, 0.35, 0.85])
         # random properties for landmarks
         for i, landmark in enumerate(world.landmarks):
             landmark.color = np.array([0.15, 0.15, 0.15])

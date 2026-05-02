@@ -1,15 +1,16 @@
 import numpy as np
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
+from multiagent.scenarios.config import positive_int
 
 
 class Scenario(BaseScenario):
-    def make_world(self):
+    def make_world(self, num_agents=75, num_landmarks=8):
+        num_agents = positive_int("num_agents", num_agents)
+        num_landmarks = positive_int("num_landmarks", num_landmarks)
         world = World()
         # set any world properties first
         world.dim_c = 2
-        num_agents = 8
-        num_landmarks = 8
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):

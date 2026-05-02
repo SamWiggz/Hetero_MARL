@@ -1,0 +1,43 @@
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments and local env files
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Test/build cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+build/
+dist/
+*.egg-info/
+
+# Notebook/editor/system noise
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
+.idea/
+
+# Training outputs and local experiment artifacts
+results/
+runs/
+logs/
+wandb/
+checkpoints/
+models/
+*.log
+*.out
+*.err
+*.pt
+*.pth
+*.pkl
+*.pickle
+*.npy
+*.npz

@@ -106,7 +106,7 @@ class OUNoise:
         dx = self.theta * (self.mu - x) + self.sigma * np.random.randn(len(x))
         self.state = x + dx
         return self.state * self.scale
-    
+
 def disable_gradients(module):
     for p in module.parameters():
         p.requires_grad = False
@@ -124,10 +124,30 @@ def categorical_sample(probs, use_cuda=False):
     acs = torch.zeros(probs.shape, dtype=probs.dtype, device=probs.device).scatter_(1, int_acs, 1)
     return int_acs, acs
 
-def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
+def get_env_config(config_module, env_id=None):
+    env_id = env_id or config_module.env_id
+    env_config = getattr(config_module, 'env_config', {})
+    if env_config is None:
+        return {}
+    if not isinstance(env_config, dict):
+        raise TypeError("env_config must be a dictionary.")
+
+    selected = env_config.get(env_id)
+    if selected is None:
+        if any(isinstance(value, dict) for value in env_config.values()):
+            return {}
+        selected = env_config
+
+    if not isinstance(selected, dict):
+        raise TypeError("env_config['{}'] must be a dictionary.".format(env_id))
+    return {key: value for key, value in selected.items() if value is not None}
+
+
+def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, env_config=None):
     def get_env_fn(rank):
         def init_env():
-            env = make_env(env_id, discrete_action=discrete_action)
+            env = make_env(env_id, discrete_action=discrete_action,
+                           env_config=env_config)
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             return env

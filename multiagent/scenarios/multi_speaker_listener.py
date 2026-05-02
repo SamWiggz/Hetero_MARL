@@ -2,15 +2,18 @@ import numpy as np
 import seaborn as sns
 from multiagent.core import World, Agent, Landmark
 from multiagent.scenario import BaseScenario
+from multiagent.scenarios.config import positive_int
 
 class Scenario(BaseScenario):
-    def make_world(self):
+    def make_world(self, num_listeners=8, num_speakers=8, num_landmarks=6):
+        num_listeners = positive_int("num_listeners", num_listeners)
+        num_speakers = positive_int("num_speakers", num_speakers)
+        num_landmarks = positive_int("num_landmarks", num_landmarks)
+        if num_speakers != num_listeners:
+            raise ValueError("multi_speaker_listener requires num_speakers == num_listeners.")
         world = World()
         # set any world properties first
         world.dim_c = 5
-        num_listeners = 8
-        num_speakers = 8
-        num_landmarks = 6
         world.landmark_colors = np.array(
             sns.color_palette(n_colors=num_landmarks))
         world.listeners = []
@@ -148,4 +151,4 @@ class Scenario(BaseScenario):
             #
             # obs += [speaker.state.c for speaker in world.speakers]
             return np.concatenate(obs)
-            
+

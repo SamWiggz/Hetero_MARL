@@ -73,10 +73,10 @@ class PolicyNN(nn.Module):
         # Initialize the weights and bias of BatchNorm1d
         self.model[0].weight.data.fill_(1)
         self.model[0].bias.data.fill_(0)
-    
+
     def forward(self, state):
         return self.model(state)
-    
+
 class CriticNN(nn.Module):
     def __init__(self, num_in_critic):
         super(CriticNN, self).__init__()
@@ -92,7 +92,7 @@ class CriticNN(nn.Module):
         # Initialize the weights and bias of BatchNorm1d
         self.model[0].weight.data.fill_(1)
         self.model[0].bias.data.fill_(0)
-    
+
     def forward(self, state_action):
         return self.model(state_action)
 
@@ -240,11 +240,11 @@ class MADDPG(object):
                     corresponding to each agent
             agent_i (int): index of agent to update
         """
-        
+
         #print(sample)
         obs, acs, rews, next_obs, dones = sample
         curr_agent = self.agents[agent_i]
-        
+
         ##
         ## Update Critic
         ##
@@ -280,18 +280,16 @@ class MADDPG(object):
         vf_loss = self.MSELoss(actual_value, target_value.detach())
 
         curr_agent.critic_optim.zero_grad()
-        #prof.toggle_collection_dynamic(True, [ProfilerActivity.CUDA, ProfilerActivity.CPU])
         vf_loss.backward()
-        #prof.toggle_collection_dynamic(False, [ProfilerActivity.CUDA, ProfilerActivity.CPU])
         torch.nn.utils.clip_grad_norm_(curr_agent.critic_nn.parameters(), 0.5)
         curr_agent.critic_optim.step()
 
         ##
         ## Update Policy
-        ## 
+        ##
         if self.discrete_action:
             curr_pol_out = curr_agent.policy_nn(obs[agent_i])
-            curr_pol_vf_in = gumbel_softmax(curr_pol_out, device=device, hard=True) 
+            curr_pol_vf_in = gumbel_softmax(curr_pol_out, device=device, hard=True)
         else:
             curr_pol_out = curr_agent.policy_nn(obs[agent_i])
             curr_pol_vf_in = curr_pol_out
@@ -313,11 +311,7 @@ class MADDPG(object):
         pol_loss += (curr_pol_out**2).mean() * 1e-3
 
         curr_agent.policy_optim.zero_grad()
-        #print(device, "here2")
-        #prof.toggle_collection_dynamic(True, [ProfilerActivity.CUDA, ProfilerActivity.CPU])
         pol_loss.backward()
-        #prof.toggle_collection_dynamic(False, [ProfilerActivity.CUDA, ProfilerActivity.CPU])
-        #print(device, "here3")
         torch.nn.utils.clip_grad_norm_(curr_agent.policy_nn.parameters(), 0.5)
         curr_agent.policy_optim.step()
 
@@ -327,8 +321,6 @@ class MADDPG(object):
         #                         'pol_loss': pol_loss},
         #                        self.niter)
 
-        # curr_agent.policy_timer.print_summary(f"Agent {agent_i} Policy")
-        # curr_agent.critic_timer.print_summary(f"Agent {agent_i} Critic")
         if self.world_size > 1:
             profile =  curr_agent.policy_timer.get_total_time() + curr_agent.critic_timer.get_total_time()
             curr_agent.policy_timer.reset()
@@ -422,4 +414,3 @@ class MADDPG(object):
         instance = cls(**init_dict)
         instance.init_dict = init_dict
         return instance
-    

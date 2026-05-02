@@ -136,8 +136,8 @@ def initSharedMemory():
     grid_config = GridConfig(num_agents=Config.n_agents,  # number of agents
                 size=Config.mapsize, # size of the grid
                 density=0.4,  # obstacle density
-                seed=1,  # set to None for random 
-                        # obstacles, agents and targets 
+                seed=1,  # set to None for random
+                        # obstacles, agents and targets
                         # positions at each reset
                 max_episode_steps=Config.episode_length,  # horizon
                 obs_radius=3,  # defines field of view

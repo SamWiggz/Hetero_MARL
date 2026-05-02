@@ -76,10 +76,10 @@ class PolicyNN(nn.Module):
         # Initialize the weights and bias of BatchNorm1d
         self.model[0].weight.data.fill_(1)
         self.model[0].bias.data.fill_(0)
-    
+
     def forward(self, state):
         return self.model(state)
-    
+
 class CriticNN(nn.Module):
     def __init__(self, num_in_critic):
         super(CriticNN, self).__init__()
@@ -95,7 +95,7 @@ class CriticNN(nn.Module):
         # Initialize the weights and bias of BatchNorm1d
         self.model[0].weight.data.fill_(1)
         self.model[0].bias.data.fill_(0)
-    
+
     def forward(self, state_action):
         return self.model(state_action)
 
@@ -243,11 +243,11 @@ class IDDPG(object):
                     corresponding to each agent
             agent_i (int): index of agent to update
         """
-        
+
         #print(sample)
         obs, acs, rews, next_obs, dones = sample
         curr_agent = self.agents[agent_i]
-        
+
         ##
         ## Update Critic
         ##
@@ -277,10 +277,10 @@ class IDDPG(object):
 
         ##
         ## Update Policy
-        ## 
+        ##
         if self.discrete_action:
             curr_pol_out = curr_agent.policy_nn(obs)
-            curr_pol_vf_in = gumbel_softmax(curr_pol_out, device=device, hard=True) 
+            curr_pol_vf_in = gumbel_softmax(curr_pol_out, device=device, hard=True)
         else:
             curr_pol_out = curr_agent.policy_nn(obs)
             curr_pol_vf_in = curr_pol_out
@@ -389,4 +389,3 @@ class IDDPG(object):
         instance = cls(**init_dict)
         instance.init_dict = init_dict
         return instance
-    

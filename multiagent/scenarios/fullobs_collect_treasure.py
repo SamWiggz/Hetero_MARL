@@ -2,20 +2,26 @@ import numpy as np
 import seaborn as sns
 from multiagent.core import World, Agent, Landmark, Wall
 from multiagent.scenario import BaseScenario
+from multiagent.scenarios.config import positive_int
 
 class Scenario(BaseScenario):
-    def make_world(self):
+    def make_world(self, num_agents=4, num_collectors=3, num_treasures=None):
+        num_agents = positive_int("num_agents", num_agents)
+        num_collectors = positive_int("num_collectors", num_collectors)
+        if num_collectors >= num_agents:
+            raise ValueError("fullobs_collect_treasure needs at least one deposit agent.")
+        num_treasures = (
+            num_collectors if num_treasures is None
+            else positive_int("num_treasures", num_treasures)
+        )
         world = World()
         # set any world properties first
         world.cache_dists = True
         world.dim_c = 2
-        num_agents = 4
-        num_collectors = 3
         num_deposits = num_agents - num_collectors
         world.treasure_types = list(range(num_deposits))
         world.treasure_colors = np.array(
             sns.color_palette(n_colors=num_deposits))
-        num_treasures = num_collectors
         # add agents
         world.agents = [Agent() for i in range(num_agents)]
         for i, agent in enumerate(world.agents):
