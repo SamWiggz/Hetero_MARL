@@ -2,9 +2,10 @@
 
 ## Overview
 
+This work introduces a novel training protocol that enables efficient MARL execution across heterogeneous CPU and GPU resources. The protocol dynamically distributes the training workload across multiple learner processes, overcoming the scalability limitations of conventional single-device training while remaining applicable to a wide range of MARL algorithms. By leveraging multiple heterogeneous resources, the proposed approach allows MARL researchers and practitioners to focus on algorithm development while achieving higher training throughput and improved resource utilization on modern computing systems.
+
 ## 1. Environment Setup
 Preliminary: Have [conda](https://www.anaconda.com/download/success) installed <br />
-Note: May need to download [torch](https://pytorch.org/get-started/locally/) manually
 
 1. Clone this repository:
 ```
