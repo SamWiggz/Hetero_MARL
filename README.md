@@ -1,5 +1,7 @@
 # Accelerating Multi-Agent Reinforcement Learning on Heterogeneous Platforms
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20500249.svg)](https://doi.org/10.5281/zenodo.20500249)
+
 ## Overview
 
 This work introduces a novel training protocol that enables efficient MARL execution across heterogeneous CPU and GPU resources. The protocol dynamically distributes the training workload across multiple learner processes, overcoming the scalability limitations of conventional single-device training while remaining applicable to a wide range of MARL algorithms. By leveraging multiple heterogeneous resources, the proposed approach allows MARL researchers and practitioners to focus on algorithm development while achieving higher training throughput and improved resource utilization on modern computing systems.
